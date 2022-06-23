@@ -39,29 +39,40 @@ export const indexDB = async ({
   flags?: string[]
   buildSDK?: boolean
 }) => {
+  console.log('indexDB', { buildSDK })
   if (database.store.supportsIndexing()) {
     if (flags.indexOf('experimentalData') === -1) {
       flags.push('experimentalData')
     }
   }
+  console.log('indexDB.createSchema')
   const tinaSchema = await createSchema({ schema: config, flags })
+  console.log('indexDB.createSchema done')
   const builder = await createBuilder({
     database,
     tinaSchema,
   })
+  console.log('indexDB.createBuilder done')
   let graphQLSchema: DocumentNode
   if (database.bridge.supportsBuilding()) {
+    console.log('indexDB._buildSchema')
     graphQLSchema = await _buildSchema(builder, tinaSchema)
+    console.log('indexDB._buildSchema done')
     await database.putConfigFiles({ graphQLSchema, tinaSchema })
+    console.log('indexDB.putConfigFiles Done')
   } else {
+    console.log('indexDB.bridge.get(_graphql.json)')
     graphQLSchema = JSON.parse(
       await database.bridge.get('.tina/__generated__/_graphql.json')
     )
   }
+  console.log('indexDB.calling indexContent')
   await database.indexContent({ graphQLSchema, tinaSchema })
   if (buildSDK) {
+    console.log('indexDB.buildSDK')
     await _buildFragments(builder, tinaSchema, database.bridge.rootPath)
     await _buildQueries(builder, tinaSchema, database.bridge.rootPath)
+    console.log('indexDB.buildSDK done')
   }
 }
 
