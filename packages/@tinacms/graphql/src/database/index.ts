@@ -542,6 +542,7 @@ export class Database {
     graphQLSchema: DocumentNode
     tinaSchema: TinaSchema
   }) => {
+    console.log('Database.indexContent')
     await this.indexStatusCallbackWrapper(async () => {
       const lookup = JSON.parse(
         await this.bridge.get(
@@ -620,12 +621,15 @@ export class Database {
   }
 
   public _indexAllContent = async () => {
+    console.log('Database._indexAllContent')
     const tinaSchema = await this.getSchema()
     await sequential(tinaSchema.getCollections(), async (collection) => {
+      let now = Date.now()
       const documentPaths = await this.bridge.glob(
         normalizePath(collection.path),
         collection.format || 'md'
       )
+      console.log('globbed ', collection.path, 'in ', Date.now() - now, 'ms')
       await _indexContent(this, documentPaths, collection)
     })
   }
@@ -709,6 +713,7 @@ const _indexContent = async (
     | CollectionFieldsWithNamespace<true>
     | CollectionTemplatesWithNamespace<true>
 ) => {
+  console.log('_indexContent', collection.name)
   let seedOptions: object | undefined = undefined
 
   if (collection) {
@@ -733,12 +738,16 @@ const _indexContent = async (
 
   await sequential(documentPaths, async (filepath) => {
     try {
+      let now = Date.now()
       const dataString = await database.bridge.get(normalizePath(filepath))
+      console.log('fetched ', filepath, 'in ', Date.now() - now, 'ms')
       const data = parseFile(dataString, path.extname(filepath), (yup) =>
         yup.object({})
       )
       if (database.store.supportsSeeding()) {
+        now = Date.now()
         await database.store.seed(normalizePath(filepath), data, seedOptions)
+        console.log('seeded ', filepath, 'in ', Date.now() - now, 'ms')
       }
     } catch (error) {
       throw new TinaFetchError(`Unable to seed ${filepath}`, {
